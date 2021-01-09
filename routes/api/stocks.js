@@ -1,3 +1,5 @@
+// Tutorial is here: https://levelup.gitconnected.com/stocks-api-tutorial-with-javascript-40f24320128c
+
 const express = require('express');
 const router = express.Router();
 const cors = require("cors");
