@@ -5,7 +5,12 @@ const bodyParser = require('body-parser');
 const stocks = require('./routes/api/stocks');
 const app = express();
 
+const cors = require("cors");
+app.use(cors());
+app.options('*', cors());
+
 // Bodyparser Middleware
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 // DB Config
