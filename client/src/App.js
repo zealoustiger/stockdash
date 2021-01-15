@@ -1,4 +1,7 @@
-import logo from './logo.svg';
+import React, {Component} from 'react';
+import StockList from './components/StockList';
+
+import 'bootstrap/dist/css/bootstrap.min.css'
 import './App.css';
 
 const getStock = async ticker => {
@@ -20,17 +23,19 @@ const getStock = async ticker => {
   return data;
 };
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <div>
-          <button onClick={() => getStock("AAPL", 'daily')}>Get stock</button>
-        </div>
-      </header>
-    </div>
-  );
+class App extends Component {
+  render(){
+    return (
+      <div className="App">
+        <header className="App-header">
+          <StockList />
+          <div>
+            <button onClick={() => getStock('AAPL', 'daily')}>Get stock</button>
+          </div>
+        </header>
+      </div>
+    );
+  }
 }
 
 export default App;
