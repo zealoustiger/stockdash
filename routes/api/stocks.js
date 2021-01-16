@@ -11,20 +11,6 @@ const timePeriod = require("../../config/constants");
 // Item Model
 const Stock = require('../../models/Stock');
 
-// router.post("/", cors(), async (req, res) => {
-//   console.log("request body is ", req.body);
-//   const body = JSON.parse(JSON.stringify(req.body));
-//   const { ticker, type } = body;
-//   console.log("stocks-api.js 14 | body", body.ticker);
-//
-//   const queryUrl = `https://www.alphavantage.co/query?function=${timePeriod(type)}&symbol=${ticker}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`;
-//   console.log("queryUrl is: ", queryUrl);
-//   const request = await fetch(queryUrl);
-//
-//   const data = await request.json();
-//   res.json({ data: data });
-// });
-
 // @route GET api/stocks
 // @desc Get all stocks
 // @access Public
@@ -53,6 +39,40 @@ router.delete('/:id', (req, res) => {
   Stock.findById(req.params.id)
     .then(stock => stock.remove().then(() => res.json({success:true})))
     .catch(err => res.status(404).json({success:false}));
+});
+
+// ROUTES for Alpha Vantage API
+router.post("/alpha", cors(), async (req, res) => {
+  const body = JSON.parse(JSON.stringify(req.body));
+  const { ticker, type } = body;
+
+  const queryUrl = `https://www.alphavantage.co/query?function=${timePeriod(type)}&symbol=${ticker}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`;
+  const request = await fetch(queryUrl);
+
+  const data = await request.json();
+  res.json({ data: data });
+});
+
+//unlimited stocks in 12 seconds X number of tickers (i.e 10 tickers = 120 seconds to get data.)
+router.post("/alpha-unlimited", async (req, res) => {
+  const body = JSON.parse(JSON.stringify(req.body));
+  const { tickers, type } = body;
+
+  let stocksArray = [];
+  console.log("stocks-api.js 14 | body", body.tickers, tickers.length);
+  await tickers.forEach(async (ticker, index) => {
+    setTimeout(async () => {
+      console.log("requesting:", ticker);
+      const request = await fetch(
+        `https://www.alphavantage.co/query?function=TIME_SERIES_MONTHLY_ADJUSTED&symbol=${ticker}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
+      );
+      const data = await request.json();
+      stocksArray.push(Object.values(data));
+      if (stocksArray.length === tickers.length) {
+        res.json({ tickers: stocksArray});
+      }
+    }, index * 12000);
+  });
 });
 
 module.exports = router;
