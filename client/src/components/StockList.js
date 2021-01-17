@@ -15,13 +15,25 @@ class StockList extends Component {
   }
 
   refreshPrices(){
-    //TODO: Fetch all stale stocks by date from mongo
-    //TODO: implement 12 second rate limiter in Redis/Rabbitmq
-    this.getAlphaStock("MA")
-      .then(res => {
-        //render after the response
-        this.setState({stocks: this.state.stocks});
-      });
+    var yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    this.state.stocks.map(({name, update_date}) => {
+      var update_date = new Date(update_date);
+      if(update_date - yesterday < 0){
+        console.log('need refresh', name, update_date);
+
+        //TODO: implement 12 second rate limiter in Redis/Rabbitmq
+        //TODO: mongoose needs to update prices and dates
+        this.getAlphaStock(name)
+          .then(res => {
+            //render after the response
+            this.setState({stocks: this.state.stocks});
+          });
+      }
+    })
+
+
   }
 
   update_symbol_with_price(symbol, price){
@@ -29,6 +41,7 @@ class StockList extends Component {
       const stocks = state.stocks.map( stock => {
         if(stock.name === symbol){
           console.log('found', stock.name, price);
+          stock.update_date = Date.now;
           return stock.price = price;
         }
       });
@@ -57,7 +70,7 @@ class StockList extends Component {
       const data = res.data.data;
 
       const symbol = data["Meta Data"]["2. Symbol"];
-      const price = this.getLastPrice(data["Time Series (Daily)"]);
+      const price = this.getFirstPrice(data["Time Series (Daily)"]);
       console.log("updating price:", symbol, price);
       this.update_symbol_with_price(symbol, price);
 
@@ -83,7 +96,7 @@ class StockList extends Component {
 
       tickers.map( ticker => {
         const symbol = ticker[0]["2. Symbol"]; // Get current symbol
-        const price = this.getLastPrice(ticker[1]);
+        const price = this.getFirstPrice(ticker[1]);
         console.log("updating price:", symbol, price);
         this.update_symbol_with_price(symbol, price);
       });
@@ -94,20 +107,28 @@ class StockList extends Component {
     });
   }
 
+  getFirstPrice(priceArr){
+    // Get the first price from JSON array
+    console.log("prices here:", priceArr[Object.keys(priceArr)[0]], priceArr);
+    const price = priceArr[Object.keys(priceArr)[0]];
+    const open_price = price["1. open"];
+    return open_price;
+  }
+
   getLastPrice(priceArr){
     // Get the last price from JSON array
     // TODO: probably easier way to do this.
     // Get last index via Object.keys(prices).length-1
     // Get the key of that index via Object.keys(prices)[index]
     // Get the actual price via prices[key]
-    const price = priceArr[Object.keys(priceArr)[Object.keys(priceArr).length-1]];
+    const price = priceArr[Object.keys(priceArr)[Object.keys(priceArr).length-1]]; // gets first historical price
     const open_price = price["1. open"];
     return open_price;
   }
 
   render() {
     const {stocks} = this.state;
-    console.log('render', stocks);
+    // console.log('render', stocks);
 
     return(
         <Container>
