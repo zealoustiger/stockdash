@@ -12,7 +12,12 @@ class StockList extends Component {
 
   componentDidMount(){
     this.getDBStocks();
-    this.getAlphaStocks()
+  }
+
+  refreshPrices(){
+    //TODO: Fetch all stale stocks by date from mongo
+    //TODO: implement 12 second rate limiter in Redis/Rabbitmq
+    this.getAlphaStock("MA")
       .then(res => {
         //render after the response
         this.setState({stocks: this.state.stocks});
@@ -38,7 +43,33 @@ class StockList extends Component {
       });
   }
 
-  async getAlphaStocks(){
+  // Get a single stock.
+  async getAlphaStock(ticker){
+    axios({
+      method: 'post',
+      url: 'http://localhost:5000/api/stocks/alpha',
+      data: {
+        "ticker": ticker,
+        "type": "daily"
+      }
+    })
+    .then(res => {
+      const data = res.data.data;
+
+      const symbol = data["Meta Data"]["2. Symbol"];
+      const price = this.getLastPrice(data["Time Series (Daily)"]);
+      console.log("updating price:", symbol, price);
+      this.update_symbol_with_price(symbol, price);
+
+      console.log('Final state', this.state.stocks);
+      this.setState({isLoading: false});
+      return this.state.stocks;
+    });
+  }
+
+  // Get an array of stocks, but with 12 secs between each
+  // Takes a long time to load
+  async getAlphaStocksArray(){
     axios({
       method: 'post',
       url: 'http://localhost:5000/api/stocks/alpha-unlimited',
@@ -102,6 +133,13 @@ class StockList extends Component {
               }
             }}
           >Add Stock
+          </Button>
+
+          <Button
+            color="dark"
+            style={{marginBottom: '2rem', marginLeft: '1rem'}}
+            onClick={() => { this.refreshPrices() }}
+          >Refresh Price
           </Button>
 
           <ListGroup>

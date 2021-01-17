@@ -10,6 +10,14 @@ const StockSchema = new Schema({
   date: {
     type: Date,
     default: Date.now
+  },
+  open: {
+    type: Number,
+    default: 0
+  },
+  update_date: {
+    type: Date,
+    default: new Date - (1000*24*60*60*1000)
   }
 });
 
