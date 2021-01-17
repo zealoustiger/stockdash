@@ -6,24 +6,25 @@ import axios from 'axios';
 
 class StockList extends Component {
   state = {
-    stocks: []
+    stocks: [],
+    isLoading: true
   }
 
   componentDidMount(){
     this.getDBStocks();
-    this.getAlphaStocks();
-    console.log('Final state', this.state.stocks);
+    this.getAlphaStocks()
+      .then(res => {
+        //render after the response
+        this.setState({stocks: this.state.stocks});
+      });
   }
 
   update_symbol_with_price(symbol, price){
     this.setState(state => {
       const stocks = state.stocks.map( stock => {
         if(stock.name === symbol){
-          // console.log('found', stock.name);
+          console.log('found', stock.name, price);
           return stock.price = price;
-        }
-        else{
-          return stock;
         }
       });
     })
@@ -37,12 +38,12 @@ class StockList extends Component {
       });
   }
 
-  getAlphaStocks(){
+  async getAlphaStocks(){
     axios({
       method: 'post',
       url: 'http://localhost:5000/api/stocks/alpha-unlimited',
       data: {
-        "tickers": ["MA", "UNH"],
+        "tickers": ["UNH", "MA"],
         "type": "daily"
       }
     })
@@ -52,14 +53,13 @@ class StockList extends Component {
       tickers.map( ticker => {
         const symbol = ticker[0]["2. Symbol"]; // Get current symbol
         const price = this.getLastPrice(ticker[1]);
+        console.log("updating price:", symbol, price);
         this.update_symbol_with_price(symbol, price);
       });
 
-      console.log(this.state.stocks);
-
-      // const prices = res.data.data["Time Series (Daily)"]; // list of prices
-      // const open = prices[Object.keys(prices)[0]]["1. open"]; // opening price for first stock
-      // this.state.stocks[3].price = open; // set the stock
+      console.log('Final state', this.state.stocks);
+      this.setState({isLoading: false});
+      return this.state.stocks;
     });
   }
 
@@ -76,60 +76,61 @@ class StockList extends Component {
 
   render() {
     const {stocks} = this.state;
+    console.log('render', stocks);
+
     return(
-      <Container>
+        <Container>
 
-        // Add Stock Button
-        <Button
-          color="dark"
-          style={{marginBottom: '2rem'}}
-          onClick={() => {
-            const name = prompt('Enter Stock');
-            console.log (name);
-            if(name) {
-              axios.post('http://localhost:5000/api/stocks', {name})
-                .then(res => {
-                  const { _id, name } = res.data;
-                  this.setState(state => ({
-                    stocks: [...state.stocks, { _id, name }]
-                  }));
-                })
-                .catch((e) => {
-                  console.log(e);
-                  return e;
-                })
-            }
-          }}
-        >Add Stock
-        </Button>
+          <Button
+            color="dark"
+            style={{marginBottom: '2rem'}}
+            onClick={() => {
+              const name = prompt('Enter Stock');
+              console.log (name);
+              if(name) {
+                axios.post('http://localhost:5000/api/stocks', {name})
+                  .then(res => {
+                    const { _id, name } = res.data;
+                    this.setState(state => ({
+                      stocks: [...state.stocks, { _id, name }]
+                    }));
+                  })
+                  .catch((e) => {
+                    console.log(e);
+                    return e;
+                  })
+              }
+            }}
+          >Add Stock
+          </Button>
 
-        // List of Stocks
-        <ListGroup>
-          <TransitionGroup className="stock-list">
-            {stocks.map(({ _id, name, price }) => (
-              <CSSTransition key={_id} timeout={500} classNames="fade">
-                <ListGroupItem>
-                  <Button
-                    className="remove-btn"
-                    color="danger"
-                    size="sm"
-                    onClick = {() => {
-                      axios.delete("http://localhost:5000/api/stocks/"+_id)
-                      .then(res => {
-                        this.setState(state => ({
-                          stocks: state.stocks.filter(stock => stock._id !== _id)
-                        }));
-                      })
-                    }}
-                  >&times;</Button>
-                  {name} | {price}
-                </ListGroupItem>
-              </CSSTransition>
-            ))}
-          </TransitionGroup>
-        </ListGroup>
+          <ListGroup>
+            <TransitionGroup className="stock-list">
+              {stocks.map(({ _id, name, price}) => (
+                <CSSTransition key={_id} timeout={500} classNames="fade">
+                  <ListGroupItem>
+                    <Button
+                      className="remove-btn"
+                      color="danger"
+                      size="sm"
+                      onClick = {() => {
+                        axios.delete("http://localhost:5000/api/stocks/"+_id)
+                        .then(res => {
+                          this.setState(state => ({
+                            stocks: state.stocks.filter(stock => stock._id !== _id)
+                          }));
+                        })
+                      }}
+                    >&times;</Button>
+                    {name} | {price}
+                  </ListGroupItem>
+                </CSSTransition>
+              ))}
+            </TransitionGroup>
+          </ListGroup>
 
-      </Container>
+        </Container>
+
     )
   }
 }
