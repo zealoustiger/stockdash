@@ -24,7 +24,7 @@ class StockList extends Component {
         console.log('need refresh', name, update_date);
 
         //TODO: implement 12 second rate limiter in Redis/Rabbitmq
-        //TODO: mongoose needs to update prices and dates
+        //TODO: render doesn't update after refresh price button
         this.getAlphaStock(name)
           .then(res => {
             //render after the response
@@ -32,28 +32,63 @@ class StockList extends Component {
           });
       }
     })
-
-
   }
 
-  update_symbol_with_price(symbol, price){
+  async update_symbol_with_price(symbol, price){
     this.setState(state => {
-      const stocks = state.stocks.map( stock => {
+      const stocks = state.stocks.map( async stock => {
         if(stock.name === symbol){
           console.log('found', stock.name, price);
           stock.update_date = Date.now;
+          await this.updateAlphaPrice(stock.name, price);
           return stock.price = price;
         }
       });
     })
   }
 
+  getFirstPrice(priceArr){
+    // Get the first price from JSON array
+    console.log("prices here:", priceArr[Object.keys(priceArr)[0]], priceArr);
+    const price = priceArr[Object.keys(priceArr)[0]];
+    const open_price = price["1. open"];
+    return open_price;
+  }
+
+  getLastPrice(priceArr){
+    // Get the last price from JSON array
+    // TODO: probably easier way to do this.
+    // Get last index via Object.keys(prices).length-1
+    // Get the key of that index via Object.keys(prices)[index]
+    // Get the actual price via prices[key]
+    const price = priceArr[Object.keys(priceArr)[Object.keys(priceArr).length-1]]; // gets first historical price
+    const open_price = price["1. open"];
+    return open_price;
+  }
+
+  // ----------------------
+  // DATABASE METHODS
+  // ----------------------
+
+  // Get all stocks
   getDBStocks(){
     axios.get('http://localhost:5000/api/stocks')
       .then(res => {
         this.setState({stocks: res.data});
         console.log('From database:', this.state.stocks);
       });
+  }
+
+  // Update a single stock price
+  async updateAlphaPrice(ticker, open){
+    axios({
+      method: 'put',
+      url: 'http://localhost:5000/api/stocks/alpha',
+      data: {
+        "ticker": ticker,
+        "open": open
+      }
+    })
   }
 
   // Get a single stock.
@@ -66,13 +101,13 @@ class StockList extends Component {
         "type": "daily"
       }
     })
-    .then(res => {
+    .then(async res => {
       const data = res.data.data;
 
       const symbol = data["Meta Data"]["2. Symbol"];
       const price = this.getFirstPrice(data["Time Series (Daily)"]);
       console.log("updating price:", symbol, price);
-      this.update_symbol_with_price(symbol, price);
+      await this.update_symbol_with_price(symbol, price);
 
       console.log('Final state', this.state.stocks);
       this.setState({isLoading: false});
@@ -107,24 +142,6 @@ class StockList extends Component {
     });
   }
 
-  getFirstPrice(priceArr){
-    // Get the first price from JSON array
-    console.log("prices here:", priceArr[Object.keys(priceArr)[0]], priceArr);
-    const price = priceArr[Object.keys(priceArr)[0]];
-    const open_price = price["1. open"];
-    return open_price;
-  }
-
-  getLastPrice(priceArr){
-    // Get the last price from JSON array
-    // TODO: probably easier way to do this.
-    // Get last index via Object.keys(prices).length-1
-    // Get the key of that index via Object.keys(prices)[index]
-    // Get the actual price via prices[key]
-    const price = priceArr[Object.keys(priceArr)[Object.keys(priceArr).length-1]]; // gets first historical price
-    const open_price = price["1. open"];
-    return open_price;
-  }
 
   render() {
     const {stocks} = this.state;
@@ -165,7 +182,7 @@ class StockList extends Component {
 
           <ListGroup>
             <TransitionGroup className="stock-list">
-              {stocks.map(({ _id, name, price}) => (
+              {stocks.map(({ _id, name, open, update_date}) => (
                 <CSSTransition key={_id} timeout={500} classNames="fade">
                   <ListGroupItem>
                     <Button
@@ -181,7 +198,11 @@ class StockList extends Component {
                         })
                       }}
                     >&times;</Button>
-                    {name} | {price}
+                    <ul>
+                      <li>{name}</li>
+                      <li>${open}</li>
+                      <li>Updated: {update_date}</li>
+                    </ul>
                   </ListGroupItem>
                 </CSSTransition>
               ))}

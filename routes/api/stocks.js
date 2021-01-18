@@ -31,11 +31,38 @@ router.post('/', (req, res) => {
   newStock.save().then(stock => res.json(stock));
 });
 
+// @route POST api/stocks
+// @desc Create a stock
+// @access Public
+router.post('/', (req, res) => {
+  const newStock = new Stock({
+    name: req.body.name
+  });
+
+  newStock.save().then(stock => res.json(stock));
+});
+
+// @route PUT api/stocks
+// @desc Update a stock price
+// @access Public
+router.put('/alpha', (req, res) => {
+  console.log('db updating:', req.body.ticker);
+  Stock.findOne({name: req.body.ticker})
+    .then(stock => {
+      console.log('open prices', stock.open, req.body.open);
+      stock.open = req.body.open;
+      stock.update_date = Date.now();
+      stock.save();
+      res.json({success:true});
+    })
+    .catch(err => res.status(404).json({success:false}));
+});
+
 // @route DELETE api/stocks
 // @desc Delete a stock
 // @access Public
 router.delete('/:id', (req, res) => {
-  console.log(req.params.id)
+  // console.log('db deleting:', req.params.id);
   Stock.findById(req.params.id)
     .then(stock => stock.remove().then(() => res.json({success:true})))
     .catch(err => res.status(404).json({success:false}));
